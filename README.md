@@ -123,7 +123,7 @@ df = read_TPRDB_tables(
 ```
 <path>/
 └── tprdb-mothership-clone/
-    ├── TPRDB/                  ← public studies
+    ├── PUBLIC/                  ← public studies
     │   └── <StudyID>/
     │       └── Tables/
     │           ├── session1.kd
@@ -142,8 +142,7 @@ two functions are designed to work together seamlessly.
 
 ## Supported Table Extensions
 
-`ss`, `sg`, `st`, `tt`, `kd`, `fd`, `au`, `pu`, `hof`, `pol`
-
+`ag`, `au`, `ex`, `fd`, `fu`, `hc`, `hs`, `kd`, `ku`, `pu`, `sg`, `ss`, `st`, `tt`
 ---
 
 ## License
