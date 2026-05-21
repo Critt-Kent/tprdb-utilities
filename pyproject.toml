@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tprdb-utilities"
+version = "0.1.0"
+description = "A toolkit for accessing and working with data from the CRITT Translation Process Research Database (TPR-DB)."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Devin Gilbert", email = "DevinG@uvu.edu" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "pandas",
+    "requests",
+]
+
+[project.urls]
+Homepage = "https://github.com/Critt-Kent/tprdb-utilities"
+Issues = "https://github.com/Critt-Kent/tprdb-utilities/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tprdb_utilities"]
