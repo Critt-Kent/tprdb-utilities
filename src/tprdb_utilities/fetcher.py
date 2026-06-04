@@ -2,9 +2,30 @@ import glob
 import io
 import os
 import time
+import xml.etree.ElementTree as ET
 import zipfile
 
 import requests
+
+
+def _get_study_summary_timestamp(study_dir):
+    """Return the ``last_generated_datatables`` value from the StudySummary XML
+    in *study_dir*, or ``None`` if the file is absent or unparseable."""
+    for xml_path in glob.glob(os.path.join(study_dir, "*.xml")):
+        try:
+            root = ET.parse(xml_path).getroot()
+            element = (
+                root
+                if root.tag == "StudySummary"
+                else root.find(".//StudySummary")
+            )
+            if element is not None:
+                ts = element.get("last_generated_datatables")
+                if ts:
+                    return ts
+        except ET.ParseError:
+            continue
+    return None
 
 
 def fetch_TPRDB_tables(
@@ -26,11 +47,13 @@ def fetch_TPRDB_tables(
         └── tprdb-mothership-clone/
             ├── TPRDB/                  ← public studies
             │   └── <StudyID>/
+            │       ├── studySummary.xml
             │       └── Tables/
             │           ├── session1.<ext>
             │           └── ...
             └── <username>/             ← private studies (when public=False)
                 └── <StudyID>/
+                    ├── studySummary.xml
                     └── Tables/
                         ├── session1.<ext>
                         └── ...
@@ -51,7 +74,8 @@ def fetch_TPRDB_tables(
         ``["kd", "ss", "st"]``.  Valid values include ``"ss"``, ``"sg"``,
         ``"st"``, ``"tt"``, ``"kd"``, ``"fd"``, ``"au"``, ``"pu"``,
         ``"hof"``, and ``"pol"``.  One API request is made per extension;
-        extensions with files already present locally are skipped.
+        extensions already present locally are re-checked against the server
+        using a conditional request (see Notes).
     public : bool
         Whether the requested study is publicly accessible.
 
@@ -101,7 +125,17 @@ def fetch_TPRDB_tables(
     into your next call.
 
     If files matching a given extension already exist in the ``Tables/``
-    directory, the API request for that extension is skipped entirely.
+    directory, the request is still made but includes the
+    ``X-Client-Tables-Timestamp`` header populated from the
+    ``last_generated_datatables`` attribute of the ``StudySummary`` XML stored
+    in the ``<StudyID>/`` directory (one level above ``Tables/``).  When the
+    server returns ``304 Not Modified`` the local files are already up to date
+    and no extraction is performed.  A ``200`` response replaces the existing
+    files with fresh archive contents.
+
+    The ``StudySummary`` XML bundled in every zip response is always written
+    to ``<StudyID>/`` rather than ``Tables/``; all other files go into
+    ``Tables/`` as usual.
 
     Examples
     --------
@@ -142,13 +176,10 @@ def fetch_TPRDB_tables(
     clean_extensions = [ext.lstrip(".") for ext in extension]
 
     results = []  # list of (ext, status_str, elapsed_str)
+    study_dir = os.path.dirname(target_dir)
 
     for ext in clean_extensions:
-        # Skip if files for this extension are already present
         existing = glob.glob(os.path.join(target_dir, f"*{ext}"))
-        if existing:
-            results.append((ext, "Skipped (already present)", "--"))
-            continue
 
         url = (
             "https://critt.as.kent.edu/tpr/api/tables/"
@@ -156,8 +187,18 @@ def fetch_TPRDB_tables(
         )
         headers = {"Authorization": f"Bearer {token}"} if not public else {}
 
+        if existing:
+            timestamp = _get_study_summary_timestamp(study_dir)
+            if timestamp:
+                headers["X-Client-Tables-Timestamp"] = timestamp
+
         t0 = time.perf_counter()
         response = requests.get(url, headers=headers)
+
+        if response.status_code == 304:
+            results.append((ext, "Up to date (304)", f"{time.perf_counter() - t0:.2f}s"))
+            continue
+
         if not response.ok:
             raise requests.HTTPError(
                 f"HTTP {response.status_code} for extension '{ext}': {response.text}"
@@ -166,13 +207,14 @@ def fetch_TPRDB_tables(
         with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
             members = zf.namelist()
             for name in members:
-                zf.extract(name, target_dir)
+                dest = study_dir if name.lower().endswith(".xml") else target_dir
+                zf.extract(name, dest)
             if verbose:
                 for name in members:
                     print(f"  Extracted: {name}")
 
         elapsed = f"{time.perf_counter() - t0:.2f}s"
-        results.append((ext, "Downloaded", elapsed))
+        results.append((ext, "Updated" if existing else "Downloaded", elapsed))
 
     # --- Always-printed summary ---
     col_w = max(max((len(r[0]) for r in results), default=0), len("Extension"))

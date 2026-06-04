@@ -71,10 +71,10 @@ StudyID  : DG21
 Clone dir: /path/to/local/data/tprdb-mothership-clone
 User dir : TPRDB
 
-Extension  Status      Time
----------  ----------  ------
-kd         Downloaded  1.23s
-ss         Downloaded  0.98s
+Extension  Status            Time
+---------  ----------------  ------
+kd         Downloaded        1.23s
+ss         Downloaded        0.98s
 
 To read these files with read_TPRDB_tables:
   path      = "/path/to/local/data/tprdb-mothership-clone"
@@ -83,6 +83,19 @@ To read these files with read_TPRDB_tables:
 ```
 
 Copy those argument values directly into `read_TPRDB_tables`.
+
+**Subsequent calls are bandwidth-efficient.** When files for an extension are
+already present, `fetch_TPRDB_tables` sends the `X-Client-Tables-Timestamp`
+header (sourced from the `studySummary.xml` bundled with the study). The server
+returns `304 Not Modified` when nothing has changed, so no data is transferred.
+The summary will reflect the outcome:
+
+```
+Extension  Status            Time
+---------  ----------------  ------
+kd         Up to date (304)  0.21s
+ss         Updated           1.05s
+```
 
 ---
 
@@ -125,15 +138,22 @@ df = read_TPRDB_tables(
 └── tprdb-mothership-clone/
     ├── PUBLIC/                  ← public studies
     │   └── <StudyID>/
+    │       ├── studySummary.xml
     │       └── Tables/
     │           ├── session1.kd
     │           └── ...
     └── <username>/             ← private studies
         └── <StudyID>/
+            ├── studySummary.xml
             └── Tables/
                 ├── session1.kd
                 └── ...
 ```
+
+Each zip response bundles a `studySummary.xml` file alongside the table files.
+`fetch_TPRDB_tables` places it in the `<StudyID>/` directory (one level above
+`Tables/`) and uses it on subsequent calls to detect whether the server data
+has changed.
 
 `read_TPRDB_tables` with `mothership=False` expects this exact layout, so the
 two functions are designed to work together seamlessly.
