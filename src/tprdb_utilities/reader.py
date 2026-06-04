@@ -4,7 +4,7 @@ import glob
 import pandas as pd
 
 
-def read_TPRDB_tables(studies, extension, mothership, path=None, user="TPRDB", verbose=0):
+def read_TPRDB_tables(studies, extension, mothership, path=None, user="PUBLIC", verbose=0):
     """
     Load TPR-DB data tables into a single concatenated DataFrame.
 
@@ -57,7 +57,7 @@ def read_TPRDB_tables(studies, extension, mothership, path=None, user="TPRDB", v
         was created by ``fetch_TPRDB_tables``.
     user : str, optional
         Name of the user sub-folder directly under ``path``.  Default is
-        ``"TPRDB"``, which corresponds to the public corpus.  When working
+        ``"PUBLIC"``, which corresponds to the public corpus.  When working
         with private studies downloaded via ``fetch_TPRDB_tables``, set
         this to your TPR-DB username (the same value passed as ``username``
         to ``fetch_TPRDB_tables``).
@@ -120,7 +120,7 @@ def read_TPRDB_tables(studies, extension, mothership, path=None, user="TPRDB", v
     ...     extension="kd",
     ...     mothership=False,
     ...     path="/path/to/tprdb-mothership-clone",
-    ...     user="TPRDB",
+    ...     user="PUBLIC",
     ... )
     """
     if mothership:

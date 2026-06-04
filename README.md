@@ -69,7 +69,7 @@ After downloading, the function always prints a summary like this:
 === fetch_TPRDB_tables Summary ===
 StudyID  : DG21
 Clone dir: /path/to/local/data/tprdb-mothership-clone
-User dir : TPRDB
+User dir : PUBLIC
 
 Extension  Status            Time
 ---------  ----------------  ------
@@ -78,7 +78,7 @@ ss         Downloaded        0.98s
 
 To read these files with read_TPRDB_tables:
   path      = "/path/to/local/data/tprdb-mothership-clone"
-  user      = "TPRDB"
+  user      = "PUBLIC"
   studies   = ["DG21"]
 ```
 
@@ -111,7 +111,7 @@ df = read_TPRDB_tables(
     extension="kd",
     mothership=False,
     path="/path/to/local/data/tprdb-mothership-clone",
-    user="TPRDB",
+    user="PUBLIC",
 )
 ```
 

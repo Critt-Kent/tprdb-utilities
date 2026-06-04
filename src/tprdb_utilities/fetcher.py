@@ -45,7 +45,7 @@ def fetch_TPRDB_tables(
 
         <path>/
         └── tprdb-mothership-clone/
-            ├── TPRDB/                  ← public studies
+            ├── PUBLIC/                 ← public studies
             │   └── <StudyID>/
             │       ├── studySummary.xml
             │       └── Tables/
@@ -81,7 +81,7 @@ def fetch_TPRDB_tables(
 
         ``True``
             No credentials required.  Files are saved under
-            ``tprdb-mothership-clone/TPRDB/<StudyID>/Tables/``.
+            ``tprdb-mothership-clone/PUBLIC/<StudyID>/Tables/``.
 
         ``False``
             Requires ``username`` and ``token``.  Files are saved under
@@ -167,7 +167,7 @@ def fetch_TPRDB_tables(
             "Provide your TPR-DB web app username (case-sensitive) and API token."
         )
 
-    folder_name = "TPRDB" if public else username
+    folder_name = "PUBLIC" if public else username
     clone_root = os.path.join(path, "tprdb-mothership-clone")
     target_dir = os.path.join(clone_root, folder_name, StudyID, "Tables")
     os.makedirs(target_dir, exist_ok=True)
