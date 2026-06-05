@@ -43,7 +43,7 @@ from tprdb_utilities import fetch_TPRDB_tables
 fetch_TPRDB_tables(
     path="/path/to/local/data",
     StudyID="DG21",
-    extension=["kd", "ss"],
+    extensions=["ss", "st"],
     public=True,
 )
 ```
@@ -56,7 +56,7 @@ from tprdb_utilities import fetch_TPRDB_tables
 fetch_TPRDB_tables(
     path="/path/to/local/data",
     StudyID="MYSTUDY",
-    extension=["kd"],
+    extensions=["st"],
     public=False,
     username="myTPRDBusername",   # case-sensitive, must match your account
     token="my-api-token",

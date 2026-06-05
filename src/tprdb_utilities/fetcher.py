@@ -29,7 +29,7 @@ def _get_study_summary_timestamp(study_dir):
 
 
 def fetch_TPRDB_tables(
-    path, StudyID, extension, public, username=None, token=None, verbose=0
+    path, StudyID, extensions, public, username=None, token=None, verbose=0
 ):
     """
     Download TPR-DB data tables from the CRITT TPR-DB API and save them
@@ -69,7 +69,7 @@ def fetch_TPRDB_tables(
     StudyID : str
         Identifier of the study to download, e.g. ``"DG21"``.  Must match a
         study registered in the TPR-DB exactly (case-sensitive).
-    extension : list of str
+    extensions : list of str
         One or more table-type extensions to download, e.g.
         ``["kd", "ss", "st"]``.  Valid values include ``"ss"``, ``"sg"``,
         ``"st"``, ``"tt"``, ``"kd"``, ``"fd"``, ``"au"``, ``"pu"``,
@@ -145,7 +145,7 @@ def fetch_TPRDB_tables(
     >>> fetch_TPRDB_tables(
     ...     path="/path/to/local/data",
     ...     StudyID="DG21",
-    ...     extension=["kd", "ss"],
+    ...     extensions=["kd", "ss"],
     ...     public=True,
     ... )
 
@@ -155,7 +155,7 @@ def fetch_TPRDB_tables(
     >>> fetch_TPRDB_tables(
     ...     path="/path/to/local/data",
     ...     StudyID="MYSTUDY",
-    ...     extension=["kd"],
+    ...     extensions=["kd"],
     ...     public=False,
     ...     username="myTPRDBusername",
     ...     token="my-api-token",
@@ -173,7 +173,7 @@ def fetch_TPRDB_tables(
     os.makedirs(target_dir, exist_ok=True)
 
     # Strip any leading dots so extensions are consistently bare (e.g. "kd" not ".kd")
-    clean_extensions = [ext.lstrip(".") for ext in extension]
+    clean_extensions = [ext.lstrip(".") for ext in extensions]
 
     results = []  # list of (ext, status_str, elapsed_str)
     study_dir = os.path.dirname(target_dir)
