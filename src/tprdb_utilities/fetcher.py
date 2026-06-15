@@ -168,7 +168,7 @@ def fetch_TPRDB_tables(
         )
 
     folder_name = "PUBLIC" if public else username
-    clone_root = os.path.join(path, "tprdb-mothership-clone")
+    clone_root = os.path.abspath(os.path.join(path, "tprdb-mothership-clone"))
     target_dir = os.path.join(clone_root, folder_name, StudyID, "Tables")
     os.makedirs(target_dir, exist_ok=True)
 
