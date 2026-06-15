@@ -12,7 +12,7 @@ Two functions cover the full workflow:
 | Function | What it does |
 |---|---|
 | `fetch_TPRDB_tables` | Downloads study tables from the CRITT API and saves them to a local directory structure |
-| `read_TPRDB_tables` | Reads those tables (locally or on the CRITT server) into a single `pandas.DataFrame` |
+| `read_TPRDB_tables` | Reads those tables from a local clone into a single `pandas.DataFrame` |
 
 ---
 
@@ -101,7 +101,10 @@ ss         Updated           1.05s
 
 ### 2 — Read data (reader)
 
-**From a local clone** (`mothership=False`) — after running `fetch_TPRDB_tables`:
+Use the `path` and `user` values printed by `fetch_TPRDB_tables` at the end of
+its summary output.
+
+**Public study** (`user="PUBLIC"`):
 
 ```python
 from tprdb_utilities import read_TPRDB_tables
@@ -109,21 +112,21 @@ from tprdb_utilities import read_TPRDB_tables
 df = read_TPRDB_tables(
     studies=["DG21", "AR22"],
     extension="kd",
-    mothership=False,
     path="/path/to/local/data/tprdb-mothership-clone",
     user="PUBLIC",
 )
 ```
 
-**Directly on the CRITT TPR-DB server** (`mothership=True`):
+**Private study** (`user="<your TPR-DB username>"`):
 
 ```python
 from tprdb_utilities import read_TPRDB_tables
 
 df = read_TPRDB_tables(
-    studies=["DG21", "AR22"],
+    studies=["MYSTUDY"],
     extension="kd",
-    mothership=True,   # path is set automatically; no path argument needed
+    path="/path/to/local/data/tprdb-mothership-clone",
+    user="USER_DIRECTORY_NAME",
 )
 ```
 
@@ -155,8 +158,8 @@ Each zip response bundles a `studySummary.xml` file alongside the table files.
 `Tables/`) and uses it on subsequent calls to detect whether the server data
 has changed.
 
-`read_TPRDB_tables` with `mothership=False` expects this exact layout, so the
-two functions are designed to work together seamlessly.
+`read_TPRDB_tables` expects this exact layout, so the two functions are designed
+to work together seamlessly.
 
 ---
 

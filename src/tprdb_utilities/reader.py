@@ -4,7 +4,7 @@ import glob
 import pandas as pd
 
 
-def read_TPRDB_tables(studies, extension, mothership, path=None, user="PUBLIC", verbose=0):
+def read_TPRDB_tables(studies, extension, path, user="PUBLIC", verbose=0):
     """
     Load TPR-DB data tables into a single concatenated DataFrame.
 
@@ -31,30 +31,12 @@ def read_TPRDB_tables(studies, extension, mothership, path=None, user="PUBLIC", 
         File extension identifying the table type, e.g. ``"kd"``, ``"ss"``,
         ``"sg"``, ``"st"``, ``"tt"``, ``"fd"``, ``"au"``, ``"pu"``,
         ``"hof"``, or ``"pol"``.  A leading dot is not required.
-    mothership : bool
-        **Required.**  Controls how the root path is resolved.
-
-        ``True``
-            You are running this function directly on the **CRITT TPR-DB
-            server** (the "mothership").  The path is automatically set to
-            ``/data/critt/tprdb/`` and the ``path`` argument is ignored.
-            The ``user`` argument still applies (default ``"TPRDB"`` for
-            the public corpus).
-
-        ``False``
-            You are working from a **local clone** of the TPR-DB structure,
-            either assembled manually or downloaded via
-            ``fetch_TPRDB_tables``.  You *must* supply the ``path``
-            argument pointing to the root of that clone (i.e. the
-            ``tprdb-mothership-clone`` directory created by
-            ``fetch_TPRDB_tables``).
-
-    path : str, optional
-        Root directory of the local TPR-DB clone.  **Required when**
-        ``mothership=False``; ignored when ``mothership=True``.
-        This should be the ``tprdb-mothership-clone`` folder — i.e. the
-        full path *including* the ``tprdb-mothership-clone`` segment — that
-        was created by ``fetch_TPRDB_tables``.
+    path : str
+        Root directory of the TPR-DB clone.  This should be the
+        ``tprdb-mothership-clone`` folder — i.e. the full path *including*
+        the ``tprdb-mothership-clone`` segment — that was created by
+        ``fetch_TPRDB_tables``.  Use the ``path`` value printed by
+        ``fetch_TPRDB_tables`` at the end of its summary output.
     user : str, optional
         Name of the user sub-folder directly under ``path``.  Default is
         ``"PUBLIC"``, which corresponds to the public corpus.  When working
@@ -76,13 +58,13 @@ def read_TPRDB_tables(studies, extension, mothership, path=None, user="PUBLIC", 
     pandas.DataFrame
         Concatenated DataFrame containing all rows from all matching table
         files across every requested study.  Column names and dtypes are
-        inferred automatically.  Returns an empty DataFrame if no matching
-        files are found.
+        inferred automatically.
 
     Raises
     ------
     ValueError
-        If ``mothership=False`` and ``path`` is not provided.
+        If the resulting DataFrame contains no data rows (i.e. no matching
+        files were found or all matched files were empty).
 
     Notes
     -----
@@ -95,19 +77,7 @@ def read_TPRDB_tables(studies, extension, mothership, path=None, user="PUBLIC", 
 
     Examples
     --------
-    **Use case 1 — Running on the CRITT TPR-DB server (mothership=True):**
-
-    Users with direct access to the CRITT server do not need to specify a
-    path; it is resolved automatically.
-
-    >>> from tprdb_utilities import read_TPRDB_tables
-    >>> df = read_TPRDB_tables(
-    ...     studies=["DG21", "AR22"],
-    ...     extension="kd",
-    ...     mothership=True,
-    ... )
-
-    **Use case 2 — Reading from a local clone (mothership=False):**
+    **Public studies** (``user="PUBLIC"``):
 
     Data must have been previously downloaded with ``fetch_TPRDB_tables``
     (or arranged manually in the identical directory structure).  Use the
@@ -116,24 +86,25 @@ def read_TPRDB_tables(studies, extension, mothership, path=None, user="PUBLIC", 
 
     >>> from tprdb_utilities import read_TPRDB_tables
     >>> df = read_TPRDB_tables(
-    ...     studies=["DG21"],
+    ...     studies=["DG21", "AR22"],
     ...     extension="kd",
-    ...     mothership=False,
     ...     path="/path/to/tprdb-mothership-clone",
     ...     user="PUBLIC",
     ... )
-    """
-    if mothership:
-        path = "/data/critt/tprdb/"
-    elif path is None:
-        raise ValueError(
-            "path is required when mothership=False. "
-            "Provide the full path to your local TPR-DB clone root — "
-            "this is the 'tprdb-mothership-clone' directory created by "
-            "fetch_TPRDB_tables. Example: "
-            "path='/your/local/data/tprdb-mothership-clone'"
-        )
 
+    **Private studies** (``user="<your TPR-DB username>"``):
+
+    For private studies, set ``user`` to the TPR-DB username that was passed
+    as ``username`` to ``fetch_TPRDB_tables``.
+
+    >>> from tprdb_utilities import read_TPRDB_tables
+    >>> df = read_TPRDB_tables(
+    ...     studies=["MYSTUDY"],
+    ...     extension="kd",
+    ...     path="/path/to/tprdb-mothership-clone",
+    ...     user="USER_DIRECTORY_NAME",
+    ... )
+    """
     df = pd.DataFrame()
     for study in studies:
         pattern = os.path.join(path, user, study, "Tables", f"*{extension}")
@@ -147,6 +118,14 @@ def read_TPRDB_tables(studies, extension, mothership, path=None, user="PUBLIC", 
                 [df, pd.read_csv(fn, sep="\t", dtype=None)],
                 ignore_index=True,
             )
+
+    if df.empty:
+        raise ValueError(
+            f"No data found for studies={studies!r}, extension={extension!r} "
+            f"under path='{path}' / user='{user}'. "
+            "Check that the path, user, study IDs, and extension are correct "
+            "and that the data has been downloaded with fetch_TPRDB_tables."
+        )
 
     if verbose:
         print(f"Total '{extension}' data rows: {df.shape[0]}, columns: {df.shape[1]}")
