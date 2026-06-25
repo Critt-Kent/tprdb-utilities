@@ -29,7 +29,7 @@ def _get_study_summary_timestamp(study_dir):
 
 
 def fetch_TPRDB_tables(
-    path, StudyID, extensions, public, username=None, token=None, verbose=0
+    path, studies, extensions, public, username=None, token=None, verbose=0
 ):
     """
     Download TPR-DB data tables from the CRITT TPR-DB API and save them
@@ -66,14 +66,14 @@ def fetch_TPRDB_tables(
         pass ``os.path.join(path, "tprdb-mothership-clone")`` as the ``path``
         argument to ``read_TPRDB_tables`` — or simply copy the value from
         the summary printed by this function.
-    StudyID : str
-        Identifier of the study to download, e.g. ``"DG21"``.  Must match a
-        study registered in the TPR-DB exactly (case-sensitive).
+    studies : list of str
+        List of study identifiers to download, e.g. ``["DG21", "SG12"]``.  Must match
+        studies registered in the TPR-DB exactly (case-sensitive).
     extensions : list of str
         One or more table-type extensions to download, e.g.
-        ``["kd", "ss", "st"]``.  Valid values include ``"ss"``, ``"sg"``,
-        ``"st"``, ``"tt"``, ``"kd"``, ``"fd"``, ``"au"``, ``"pu"``,
-        ``"hof"``, and ``"pol"``.  One API request is made per extension;
+        ``["kd", "ss", "st"]``.  Valid values include ``"ag"``, ``"au"``, ``"ex"``, ``"fd"``,
+        ``"fu"``, ``"hc"``, ``"hs"``, ``"kd"``, ``"ku"``, ``"pu"``, ``"sg"``, ``"ss"``,
+        ``"st"``, and ``"tt"``.  One API request is made per extension;
         extensions already present locally are re-checked against the server
         using a conditional request (see Notes).
     public : bool
@@ -144,7 +144,7 @@ def fetch_TPRDB_tables(
     >>> from tprdb_utilities import fetch_TPRDB_tables
     >>> fetch_TPRDB_tables(
     ...     path="/path/to/local/data",
-    ...     StudyID="DG21",
+    ...     studies=["DG21"],
     ...     extensions=["kd", "ss"],
     ...     public=True,
     ... )
@@ -154,7 +154,7 @@ def fetch_TPRDB_tables(
     >>> from tprdb_utilities import fetch_TPRDB_tables
     >>> fetch_TPRDB_tables(
     ...     path="/path/to/local/data",
-    ...     StudyID="MYSTUDY",
+    ...     studies=["MYSTUDY"],
     ...     extensions=["kd"],
     ...     public=False,
     ...     username="myTPRDBusername",
@@ -166,71 +166,87 @@ def fetch_TPRDB_tables(
             "username and token are required when public=False. "
             "Provide your TPR-DB web app username (case-sensitive) and API token."
         )
+    
 
-    folder_name = "PUBLIC" if public else username
+
+    folder_name = "PUBLIC" if public else str(username)
     clone_root = os.path.abspath(os.path.join(path, "tprdb-mothership-clone"))
-    target_dir = os.path.join(clone_root, folder_name, StudyID, "Tables")
-    os.makedirs(target_dir, exist_ok=True)
 
     # Strip any leading dots so extensions are consistently bare (e.g. "kd" not ".kd")
+    # Computed once — same for every study
     clean_extensions = [ext.lstrip(".") for ext in extensions]
 
-    results = []  # list of (ext, status_str, elapsed_str)
-    study_dir = os.path.dirname(target_dir)
+    all_results: dict[str, list[tuple[str, str, str]]] = {}  # StudyID -> [(ext, status, elapsed)]
 
-    for ext in clean_extensions:
-        existing = glob.glob(os.path.join(target_dir, f"*{ext}"))
+    for StudyID in studies:
+        target_dir = os.path.join(clone_root, folder_name, StudyID, "Tables")
+        os.makedirs(target_dir, exist_ok=True)
+        study_dir = os.path.dirname(target_dir)
+        results = []
 
-        url = (
-            "https://critt.as.kent.edu/tpr/api/tables/"
-            f"?studyID={StudyID}&extension={ext}&public={str(public).lower()}"
-        )
-        headers = {"Authorization": f"Bearer {token}"} if not public else {}
+        for ext in clean_extensions:
+            existing = glob.glob(os.path.join(target_dir, f"*{ext}"))
 
-        if existing:
-            timestamp = _get_study_summary_timestamp(study_dir)
-            if timestamp:
-                headers["X-Client-Tables-Timestamp"] = timestamp
-
-        t0 = time.perf_counter()
-        response = requests.get(url, headers=headers)
-
-        if response.status_code == 304:
-            results.append((ext, "Up to date (304)", f"{time.perf_counter() - t0:.2f}s"))
-            continue
-
-        if not response.ok:
-            raise requests.HTTPError(
-                f"HTTP {response.status_code} for extension '{ext}': {response.text}"
+            url = (
+                "https://critt.as.kent.edu/tpr/api/tables/"
+                f"?studyID={StudyID}&extension={ext}&public={str(public).lower()}"
             )
+            headers = {"Authorization": f"Bearer {token}"} if not public else {}
 
-        with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
-            members = zf.namelist()
-            for name in members:
-                dest = study_dir if name.lower().endswith(".xml") else target_dir
-                zf.extract(name, dest)
-            if verbose:
+            if existing:
+                timestamp = _get_study_summary_timestamp(study_dir)
+                if timestamp:
+                    headers["X-Client-Tables-Timestamp"] = timestamp
+
+            t0 = time.perf_counter()
+            # ↓ show status before the blocking request
+            print(f"\r  {StudyID} [{ext}]: Fetching...", end="", flush=True)
+
+            # ---- ye request (the most important part) ----
+            response = requests.get(url, headers=headers)
+
+            # clear the status line so summary prints cleanly
+            print(f"\r  {StudyID} [{ext}]: Done fetching (^_^)", flush=True)
+
+            if response.status_code == 304:
+                results.append((ext, "Up to date (304)", f"{time.perf_counter() - t0:.2f}s"))
+                continue
+
+            if not response.ok:
+                print() # move to new line before raising
+                raise requests.HTTPError(
+                    f"HTTP {response.status_code} for extension '{ext}': {response.text}"
+                )
+
+            with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
+                members = zf.namelist()
                 for name in members:
-                    print(f"  Extracted: {name}")
+                    dest = study_dir if name.lower().endswith(".xml") else target_dir
+                    zf.extract(name, dest)
 
-        elapsed = f"{time.perf_counter() - t0:.2f}s"
-        results.append((ext, "Updated" if existing else "Downloaded", elapsed))
+            elapsed = f"{time.perf_counter() - t0:.2f}s"
+            results.append((ext, "Updated" if existing else "Downloaded", elapsed))
+
+        all_results[StudyID] = results
 
     # --- Always-printed summary ---
-    col_w = max(max((len(r[0]) for r in results), default=0), len("Extension"))
-    status_w = max(max((len(r[1]) for r in results), default=0), len("Status"))
-
-    print("=== fetch_TPRDB_tables Summary ===")
-    print(f"StudyID  : {StudyID}")
+    print("\n=== fetch_TPRDB_tables Summary ===")
     print(f"Clone dir: {clone_root}")
     print(f"User dir : {folder_name}")
     print()
-    print(f"{'Extension':<{col_w}}  {'Status':<{status_w}}  Time")
-    print(f"{'-' * col_w}  {'-' * status_w}  ------")
-    for ext, status, elapsed in results:
-        print(f"{ext:<{col_w}}  {status:<{status_w}}  {elapsed}")
-    print()
-    print("To read these files with read_TPRDB_tables:")
+
+    for StudyID, results in all_results.items():
+        col_w = max(max((len(r[0]) for r in results), default=0), len("Extension"))
+        status_w = max(max((len(r[1]) for r in results), default=0), len("Status"))
+
+        print(f"StudyID: {StudyID}")
+        print(f"{'Extension':<{col_w}}  {'Status':<{status_w}}  Time")
+        print(f"{'-' * col_w}  {'-' * status_w}  ------")
+        for ext, status, elapsed in results:
+            print(f"{ext:<{col_w}}  {status:<{status_w}}  {elapsed}")
+        print()
+
+    print("To read these files into a DataFrame with read_TPRDB_tables:")
     print(f'  path      = "{clone_root}"')
     print(f'  user      = "{folder_name}"')
-    print(f'  studies   = ["{StudyID}"]')
+    print(f'  studies   = {list(all_results.keys())}')

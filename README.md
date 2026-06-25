@@ -42,7 +42,7 @@ from tprdb_utilities import fetch_TPRDB_tables
 
 fetch_TPRDB_tables(
     path="/path/to/local/data",
-    StudyID="DG21",
+    studies=["DG21"],
     extensions=["ss", "st"],
     public=True,
 )
@@ -55,7 +55,7 @@ from tprdb_utilities import fetch_TPRDB_tables
 
 fetch_TPRDB_tables(
     path="/path/to/local/data",
-    StudyID="MYSTUDY",
+    studies=["MYSTUDY"],
     extensions=["st"],
     public=False,
     username="myTPRDBusername",   # case-sensitive, must match your account
@@ -66,6 +66,9 @@ fetch_TPRDB_tables(
 After downloading, the function always prints a summary like this:
 
 ```
+DG21 [ss]: Done fetching (^_^)
+DG21 [st]: Done fetching (^_^)
+
 === fetch_TPRDB_tables Summary ===
 StudyID  : DG21
 Clone dir: /path/to/local/data/tprdb-mothership-clone
@@ -73,8 +76,8 @@ User dir : PUBLIC
 
 Extension  Status            Time
 ---------  ----------------  ------
-kd         Downloaded        1.23s
-ss         Downloaded        0.98s
+ss         Downloaded        1.23s
+st         Downloaded        0.98s
 
 To read these files with read_TPRDB_tables:
   path      = "/path/to/local/data/tprdb-mothership-clone"
@@ -93,8 +96,8 @@ The summary will reflect the outcome:
 ```
 Extension  Status            Time
 ---------  ----------------  ------
-kd         Up to date (304)  0.21s
-ss         Updated           1.05s
+ss         Up to date (304)  0.21s
+st         Updated           1.05s
 ```
 
 ---
@@ -111,7 +114,7 @@ from tprdb_utilities import read_TPRDB_tables
 
 df = read_TPRDB_tables(
     studies=["DG21", "AR22"],
-    extension="kd",
+    extension="st",
     path="/path/to/local/data/tprdb-mothership-clone",
     user="PUBLIC",
 )
@@ -124,7 +127,7 @@ from tprdb_utilities import read_TPRDB_tables
 
 df = read_TPRDB_tables(
     studies=["MYSTUDY"],
-    extension="kd",
+    extension="st",
     path="/path/to/local/data/tprdb-mothership-clone",
     user="USER_DIRECTORY_NAME",
 )
@@ -143,13 +146,13 @@ df = read_TPRDB_tables(
     │   └── <StudyID>/
     │       ├── studySummary.xml
     │       └── Tables/
-    │           ├── session1.kd
+    │           ├── session1.st
     │           └── ...
     └── <username>/             ← private studies
         └── <StudyID>/
             ├── studySummary.xml
             └── Tables/
-                ├── session1.kd
+                ├── session1.st
                 └── ...
 ```
 

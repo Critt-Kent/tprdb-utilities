@@ -28,9 +28,10 @@ def read_TPRDB_tables(studies, extension, path, user="PUBLIC", verbose=0):
         Study identifiers to load, e.g. ``["BML12", "SG12", "AR22"]``.
         Each must correspond to a subfolder under ``<path>/<user>/``.
     extension : str
-        File extension identifying the table type, e.g. ``"kd"``, ``"ss"``,
-        ``"sg"``, ``"st"``, ``"tt"``, ``"fd"``, ``"au"``, ``"pu"``,
-        ``"hof"``, or ``"pol"``.  A leading dot is not required.
+        File extension identifying the table type, e.g.,
+        ``"ag"``, ``"au"``, ``"ex"``, ``"fd"``, ``"fu"``, ``"hc"``,
+        ``"hs"``, ``"kd"``, ``"ku"``, ``"pu"``, ``"sg"``, ``"ss"``,
+        ``"st"``, or ``"tt"``.  A leading dot is not required.
     path : str
         Root directory of the TPR-DB clone.  This should be the
         ``tprdb-mothership-clone`` folder — i.e. the full path *including*
@@ -72,8 +73,8 @@ def read_TPRDB_tables(studies, extension, path, user="PUBLIC", verbose=0):
     corresponds to one recording session.
 
     The ``extension`` argument is matched as a file-name suffix, so passing
-    ``"kd"`` will match any file whose name ends with ``"kd"``
-    (e.g. ``"P01_DG21_EN-DE.kd"``).
+    ``"st"`` will match any file whose name ends with ``"st"``
+    (e.g. ``"P01_T1.st"``).
 
     Examples
     --------
@@ -87,7 +88,7 @@ def read_TPRDB_tables(studies, extension, path, user="PUBLIC", verbose=0):
     >>> from tprdb_utilities import read_TPRDB_tables
     >>> df = read_TPRDB_tables(
     ...     studies=["DG21", "AR22"],
-    ...     extension="kd",
+    ...     extension="st",
     ...     path="/path/to/tprdb-mothership-clone",
     ...     user="PUBLIC",
     ... )
@@ -100,7 +101,7 @@ def read_TPRDB_tables(studies, extension, path, user="PUBLIC", verbose=0):
     >>> from tprdb_utilities import read_TPRDB_tables
     >>> df = read_TPRDB_tables(
     ...     studies=["MYSTUDY"],
-    ...     extension="kd",
+    ...     extension="st",
     ...     path="/path/to/tprdb-mothership-clone",
     ...     user="USER_DIRECTORY_NAME",
     ... )
