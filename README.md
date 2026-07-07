@@ -14,6 +14,7 @@ Three functions cover the full workflow:
 | `fetch_TPRDB_tables` | Downloads study tables from the CRITT API and saves them to a local directory structure |
 | `read_TPRDB_tables` | Reads those tables from a local clone into a single `pandas.DataFrame` |
 | `prep_parallel_texts` | Builds segment-aligned bitext and tritext DataFrames ready for MT evaluation |
+| `recompute_pause_based_metrics` | Recomputes typing-burst metrics (TB, TG, TD) for a custom pause threshold and appends them to an SG DataFrame |
 
 ---
 
@@ -193,6 +194,41 @@ Tritext DataFrames contain only source segments that **both** participants
 translated (inner join on study, task, text, and segment number). Merged
 segments that could not be split are included in bitexts (with the component
 source strings concatenated) but excluded from tritexts.
+
+---
+
+### 4 — Recompute pause-based metrics (transformer)
+
+SG tables already include typing-burst metrics computed at the standard 1000 ms
+pause threshold (`TB1000`, `TG1000`, `TD1000`). Use `recompute_pause_based_metrics`
+to compute the same three metrics at any other threshold and append them as new
+columns.
+
+```python
+from tprdb_utilities import read_TPRDB_tables, recompute_pause_based_metrics
+
+path = "/path/to/local/data/tprdb-mothership-clone"
+
+sg = read_TPRDB_tables(["BML12"], "sg", path)
+kd = read_TPRDB_tables(["BML12"], "kd", path)
+
+sg_500 = recompute_pause_based_metrics(sg, kd, threshold=500)
+```
+
+This appends three new columns to the returned DataFrame:
+
+| Column | Description |
+|---|---|
+| `TB500` | Number of typing bursts per segment |
+| `TG500` | Total inter-burst pause time (ms) per segment |
+| `TD500` | Total active typing duration (ms) per segment |
+
+The column names reflect the threshold you pass in, so `threshold=250` would
+add `TB250`, `TG250`, and `TD250`.  Calling with `threshold=1000` raises a
+`ValueError` since those columns are already in the table.
+
+If you call the function a second time with the same threshold, the existing
+columns are silently replaced (the call is idempotent).
 
 ---
 
