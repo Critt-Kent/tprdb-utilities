@@ -7,12 +7,13 @@
 A Python toolkit for downloading and reading data tables from the
 [CRITT Translation Process Research Database (TPR-DB)](https://critt.as.kent.edu/tpr/).
 
-Two functions cover the full workflow:
+Three functions cover the full workflow:
 
 | Function | What it does |
 |---|---|
 | `fetch_TPRDB_tables` | Downloads study tables from the CRITT API and saves them to a local directory structure |
 | `read_TPRDB_tables` | Reads those tables from a local clone into a single `pandas.DataFrame` |
+| `prep_parallel_texts` | Builds segment-aligned bitext and tritext DataFrames ready for MT evaluation |
 
 ---
 
@@ -132,6 +133,66 @@ df = read_TPRDB_tables(
     user="USER_DIRECTORY_NAME",
 )
 ```
+
+---
+
+### 3 — Transform data (transformer)
+
+Once you have the SG, ST, and TT tables loaded, `prep_parallel_texts` aligns
+translation segments across participants and builds parallel-text DataFrames
+suitable for automatic MT evaluation with tools like BLEU or COMET.
+
+```python
+from tprdb_utilities import read_TPRDB_tables, prep_parallel_texts
+
+path = "/path/to/local/data/tprdb-mothership-clone"
+
+sg = read_TPRDB_tables(["RUC17"], "sg", path)
+st = read_TPRDB_tables(["RUC17"], "st", path)
+tt = read_TPRDB_tables(["RUC17"], "tt", path)
+
+parallel_texts = prep_parallel_texts(sg, st, tt)
+```
+
+The return value is a dictionary. Keys follow two patterns:
+
+| Key pattern | Contains |
+|---|---|
+| `"ST_{part}"` | Bitext — source text + one participant's translations |
+| `"ST_{p1}_{p2}"` | Tritext — source text + two participants' translations |
+
+```python
+# Bitext: source text aligned with P01's translations
+parallel_texts["ST_P01"]
+# Study  Task  Text  STseg  String_ST                   String_P01
+# RUC17  P     4     1      Developing countries are …  发展中国家不愿 …
+# …
+
+# Tritext: source text aligned with P01's and P02's translations
+parallel_texts["ST_P01_P02"]
+# Study  Task  Text  STseg  String_ST                   String_P01       String_P02
+# RUC17  P     4     1      Developing countries are …  发展中国家不愿 …  虽然我们可以 …
+# …
+
+# Extract just the text columns for evaluation
+bitext = parallel_texts["ST_P01"][["String_ST", "String_P01"]]
+tritext = parallel_texts["ST_P01_P02"][["String_ST", "String_P01", "String_P02"]]
+```
+
+By default both bitexts and tritexts are produced. To generate only one kind:
+
+```python
+# Bitexts only
+parallel_texts = prep_parallel_texts(sg, st, tt, prep_tritexts=False)
+
+# Tritexts only
+parallel_texts = prep_parallel_texts(sg, st, tt, prep_bitexts=False)
+```
+
+Tritext DataFrames contain only source segments that **both** participants
+translated (inner join on study, task, text, and segment number). Merged
+segments that could not be split are included in bitexts (with the component
+source strings concatenated) but excluded from tritexts.
 
 ---
 
