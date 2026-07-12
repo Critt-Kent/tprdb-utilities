@@ -93,13 +93,30 @@ Copy those argument values directly into `read_TPRDB_tables`.
 already present, `fetch_TPRDB_tables` sends the `X-Client-Tables-Timestamp`
 header (sourced from the `studySummary.xml` bundled with the study). The server
 returns `304 Not Modified` when nothing has changed, so no data is transferred.
-The summary will reflect the outcome:
+The timestamp is read once per study, before the first request, so all
+conditional requests in the same call are checked against the state of your
+clone as it was before the call. The summary will reflect the outcome:
 
 ```
 Extension  Status            Time
 ---------  ----------------  ------
 ss         Up to date (304)  0.21s
 st         Updated           1.05s
+```
+
+**Stale clones are re-synced automatically.** If a response reveals that the
+server data for a study is newer than your local clone (the study's tables
+were regenerated on the server), every extension already present locally for
+that study is re-downloaded — even extensions you did not request in that
+call. This guarantees that all table files in the clone stay in step with the
+study's `studySummary.xml`, and therefore with the data on the server.
+Re-downloaded extensions appear in the summary as `Re-synced (stale)`:
+
+```
+Extension  Status             Time
+---------  -----------------  ------
+ss         Updated            1.05s
+kd         Re-synced (stale)  2.31s
 ```
 
 ---
@@ -256,7 +273,8 @@ columns are silently replaced (the call is idempotent).
 Each zip response bundles a `studySummary.xml` file alongside the table files.
 `fetch_TPRDB_tables` places it in the `<StudyID>/` directory (one level above
 `Tables/`) and uses it on subsequent calls to detect whether the server data
-has changed.
+has changed. When it has, all locally present extensions for the study are
+re-downloaded so every table file matches the new `studySummary.xml`.
 
 `read_TPRDB_tables` expects this exact layout, so the two functions are designed
 to work together seamlessly.

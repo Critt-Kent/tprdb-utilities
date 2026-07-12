@@ -135,10 +135,23 @@ def fetch_TPRDB_tables(
     directory, the request is still made but includes the
     ``X-Client-Tables-Timestamp`` header populated from the
     ``last_generated_datatables`` attribute of the ``StudySummary`` XML stored
-    in the ``<StudyID>/`` directory (one level above ``Tables/``).  When the
-    server returns ``304 Not Modified`` the local files are already up to date
-    and no extraction is performed.  A ``200`` response replaces the existing
-    files with fresh archive contents.
+    in the ``<StudyID>/`` directory (one level above ``Tables/``).  This
+    timestamp is read once per study, *before* the first request, so every
+    conditional request in the same call is checked against the state of the
+    local clone as it was before the call — never against a ``StudySummary``
+    XML freshly downloaded mid-call.  When the server returns ``304 Not
+    Modified`` the local files are already up to date and no extraction is
+    performed.  A ``200`` response replaces the existing files with fresh
+    archive contents.
+
+    When a response reveals that the server data is newer than the local
+    clone (the freshly extracted ``StudySummary`` XML carries a different
+    timestamp than the one stored locally before the call), **all** table
+    extensions already present locally for that study are re-downloaded —
+    including extensions not listed in ``extensions``.  These appear in the
+    summary with the status ``Re-synced (stale)``.  This guarantees that
+    every table file in the clone is in step with the study's
+    ``StudySummary`` XML, and therefore with the data on the server.
 
     The ``StudySummary`` XML bundled in every zip response is always written
     to ``<StudyID>/`` rather than ``Tables/``; all other files go into
@@ -191,7 +204,33 @@ def fetch_TPRDB_tables(
         study_dir = os.path.dirname(target_dir)
         results = []
 
-        for ext in clean_extensions:
+        # Read the local timestamp ONCE per study, *before* any request can
+        # overwrite the StudySummary XML.  Re-reading it between requests
+        # would compare later extensions against a freshly downloaded
+        # timestamp and wrongly report stale local files as up to date.
+        local_timestamp = _get_study_summary_timestamp(study_dir)
+
+        # Extensions already present locally for this study — possibly
+        # including extensions not requested in this call.  If the server
+        # data turns out to be newer, all of these must be re-downloaded so
+        # the whole study stays in step with the new StudySummary XML.
+        present_extensions = {
+            name.rsplit(".", 1)[-1]
+            for name in os.listdir(target_dir)
+            if "." in name
+        }
+
+        # Work queue: requested extensions first; stale local extensions may
+        # be appended while the queue is being processed (see below).
+        queue = list(dict.fromkeys(clean_extensions))
+        queued = set(queue)
+        requested = set(clean_extensions)
+        resync_checked = False
+
+        i = 0
+        while i < len(queue):
+            ext = queue[i]
+            i += 1
             existing = glob.glob(os.path.join(target_dir, f"*{ext}"))
 
             url = (
@@ -200,10 +239,8 @@ def fetch_TPRDB_tables(
             )
             headers = {"Authorization": f"Bearer {token}"} if not public else {}
 
-            if existing:
-                timestamp = _get_study_summary_timestamp(study_dir)
-                if timestamp:
-                    headers["X-Client-Tables-Timestamp"] = timestamp
+            if existing and local_timestamp:
+                headers["X-Client-Tables-Timestamp"] = local_timestamp
 
             t0 = time.perf_counter()
             # ↓ show status before the blocking request
@@ -231,8 +268,29 @@ def fetch_TPRDB_tables(
                     dest = study_dir if name.lower().endswith(".xml") else target_dir
                     zf.extract(name, dest)
 
+            # The extraction above may have replaced the StudySummary XML.
+            # If its timestamp differs from the one stored locally before
+            # this call, every table file already in the clone for this
+            # study is out of step with the new XML — queue all locally
+            # present extensions for re-download, including ones the user
+            # did not request, so the whole study is guaranteed to match
+            # the server data.
+            if not resync_checked:
+                resync_checked = True
+                new_timestamp = _get_study_summary_timestamp(study_dir)
+                if new_timestamp != local_timestamp:
+                    for extra in sorted(present_extensions - queued):
+                        queue.append(extra)
+                        queued.add(extra)
+
             elapsed = f"{time.perf_counter() - t0:.2f}s"
-            results.append((ext, "Updated" if existing else "Downloaded", elapsed))
+            if ext not in requested:
+                status = "Re-synced (stale)"
+            elif existing:
+                status = "Updated"
+            else:
+                status = "Downloaded"
+            results.append((ext, status, elapsed))
 
         all_results[StudyID] = results
 
