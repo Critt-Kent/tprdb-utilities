@@ -4,6 +4,7 @@ import os
 import time
 import xml.etree.ElementTree as ET
 import zipfile
+from pathlib import Path
 
 import requests
 
@@ -62,10 +63,16 @@ def fetch_TPRDB_tables(
     ----------
     path : str
         Root directory in which the ``tprdb-mothership-clone`` folder will
-        be created (or appended to if it already exists).  After downloading,
-        pass ``os.path.join(path, "tprdb-mothership-clone")`` as the ``path``
-        argument to ``read_TPRDB_tables`` — or simply copy the value from
-        the summary printed by this function.
+        be created (or appended to if it already exists).  The path is
+        expanded and resolved before use, so ``"~"``/``"~/..."`` (home
+        directory), ``"."``/``"./..."`` and ``".."``/``"../..."`` (relative
+        to the current working directory), and absolute paths all work the
+        same way on Linux, macOS, and Windows — including inside Jupyter
+        notebooks, where no shell expansion takes place.  On Windows, write
+        backslash paths as raw strings (``r"C:\\Users\\me\\data"``) or use
+        forward slashes (``"C:/Users/me/data"``).  After downloading, pass
+        the ``path`` value printed in the summary as the ``path`` argument
+        to ``read_TPRDB_tables``.
     studies : list of str
         List of study identifiers to download, e.g. ``["DG21", "SG12"]``.  Must match
         studies registered in the TPR-DB exactly (case-sensitive).
@@ -170,7 +177,7 @@ def fetch_TPRDB_tables(
 
 
     folder_name = "PUBLIC" if public else str(username)
-    clone_root = os.path.abspath(os.path.join(path, "tprdb-mothership-clone"))
+    clone_root = str((Path(path).expanduser() / "tprdb-mothership-clone").resolve())
 
     # Strip any leading dots so extensions are consistently bare (e.g. "kd" not ".kd")
     # Computed once — same for every study

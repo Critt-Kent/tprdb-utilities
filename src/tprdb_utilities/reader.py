@@ -1,5 +1,6 @@
 import os
 import glob
+from pathlib import Path
 
 import pandas as pd
 
@@ -37,7 +38,14 @@ def read_TPRDB_tables(studies, extension, path, user="PUBLIC", verbose=0):
         ``tprdb-mothership-clone`` folder — i.e. the full path *including*
         the ``tprdb-mothership-clone`` segment — that was created by
         ``fetch_TPRDB_tables``.  Use the ``path`` value printed by
-        ``fetch_TPRDB_tables`` at the end of its summary output.
+        ``fetch_TPRDB_tables`` at the end of its summary output.  The path
+        is expanded and resolved before use, so ``"~"``/``"~/..."`` (home
+        directory), ``"."``/``"./..."`` and ``".."``/``"../..."`` (relative
+        to the current working directory), and absolute paths all work the
+        same way on Linux, macOS, and Windows — including inside Jupyter
+        notebooks, where no shell expansion takes place.  On Windows, write
+        backslash paths as raw strings (``r"C:\\Users\\me\\data"``) or use
+        forward slashes (``"C:/Users/me/data"``).
     user : str, optional
         Name of the user sub-folder directly under ``path``.  Default is
         ``"PUBLIC"``, which corresponds to the public corpus.  When working
@@ -106,6 +114,8 @@ def read_TPRDB_tables(studies, extension, path, user="PUBLIC", verbose=0):
     ...     user="USER_DIRECTORY_NAME",
     ... )
     """
+    path = str(Path(path).expanduser().resolve())
+
     df = pd.DataFrame()
     for study in studies:
         pattern = os.path.join(path, user, study, "Tables", f"*{extension}")
