@@ -110,13 +110,13 @@ were regenerated on the server), every extension already present locally for
 that study is re-downloaded — even extensions you did not request in that
 call. This guarantees that all table files in the clone stay in step with the
 study's `studySummary.xml`, and therefore with the data on the server.
-Re-downloaded extensions appear in the summary as `Re-synced (stale)`:
+Re-downloaded extensions appear in the summary as `Auto-updated`:
 
 ```
 Extension  Status             Time
 ---------  -----------------  ------
 ss         Updated            1.05s
-kd         Re-synced (stale)  2.31s
+kd         Auto-updated.      2.31s
 ```
 
 ---

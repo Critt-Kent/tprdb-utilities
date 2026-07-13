@@ -149,7 +149,7 @@ def fetch_TPRDB_tables(
     timestamp than the one stored locally before the call), **all** table
     extensions already present locally for that study are re-downloaded —
     including extensions not listed in ``extensions``.  These appear in the
-    summary with the status ``Re-synced (stale)``.  This guarantees that
+    summary with the status ``Auto-updated``.  This guarantees that
     every table file in the clone is in step with the study's
     ``StudySummary`` XML, and therefore with the data on the server.
 
@@ -285,7 +285,7 @@ def fetch_TPRDB_tables(
 
             elapsed = f"{time.perf_counter() - t0:.2f}s"
             if ext not in requested:
-                status = "Re-synced (stale)"
+                status = "Auto-updated"
             elif existing:
                 status = "Updated"
             else:
