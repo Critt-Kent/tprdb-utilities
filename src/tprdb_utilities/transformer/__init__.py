@@ -13,5 +13,6 @@ recompute_pause_based_metrics
 
 from .parallel_texts import prep_parallel_texts
 from .pause_metrics import recompute_pause_based_metrics
+from .word_translation_entropy import ST_entropy_df, SG_entropy_df,DF_entropy_df
 
-__all__ = ["prep_parallel_texts", "recompute_pause_based_metrics"]
+__all__ = ["prep_parallel_texts", "recompute_pause_based_metrics","word_translation_entropy"]
