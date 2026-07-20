@@ -261,9 +261,10 @@ functions work together to compute and propagate these metrics.
 
 `ST_entropy_df` computes the entropy values from **ST** (source-token)
 table and returns a new ST DataFrame with the metrics added. `SG_entropy_df`
-and `DF_entropy_df` then aggregate those per-token values up to the **SG**
-(segment) table or to any other DataFrame that references source tokens via a
-`SGid` column, so `ST_entropy_df` must always be run first.
+and `DF_entropy_df` then aggregate those per-token values up to a DataFrame
+created from **SG** (segment) tables or to any other DataFrame
+that references source tokens via a `SGid` column,
+so `ST_entropy_df` must always be run first.
 
 ```python
 from tprdb_utilities import read_TPRDB_tables, ST_entropy_df, SG_entropy_df, DF_entropy_df
