@@ -1,13 +1,15 @@
 from tprdb_utilities.fetcher import fetch_TPRDB_tables
 from tprdb_utilities.reader import read_TPRDB_tables
-from tprdb_utilities.transformer import prep_parallel_texts, recompute_pause_based_metrics,word_translation_entropy
+from tprdb_utilities.transformer import prep_parallel_texts, recompute_pause_based_metrics, ST_entropy_df, SG_entropy_df, DF_entropy_df
 
 __all__ = [
     "fetch_TPRDB_tables",
     "read_TPRDB_tables",
     "prep_parallel_texts",
     "recompute_pause_based_metrics",
-    "word_translation_entropy",
+    "ST_entropy_df",
+    "SG_entropy_df",
+    "DF_entropy_df",
 ]
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"

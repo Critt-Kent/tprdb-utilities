@@ -7,7 +7,7 @@
 A Python toolkit for downloading and reading data tables from the
 [CRITT Translation Process Research Database (TPR-DB)](https://critt.as.kent.edu/tpr/).
 
-Three functions cover the full workflow:
+These functions cover the full workflow:
 
 | Function | What it does |
 |---|---|
@@ -15,6 +15,9 @@ Three functions cover the full workflow:
 | `read_TPRDB_tables` | Reads those tables from a local clone into a single `pandas.DataFrame` |
 | `prep_parallel_texts` | Builds segment-aligned bitext and tritext DataFrames ready for MT evaluation |
 | `recompute_pause_based_metrics` | Recomputes typing-burst metrics (TB, TG, TD) for a custom pause threshold and appends them to an SG DataFrame |
+| `ST_entropy_df` | Computes word translation entropy metrics for a Source Token (ST) DataFrame |
+| `SG_entropy_df` | Aggregates word translation entropy metrics onto a Segment (SG) DataFrame |
+| `DF_entropy_df` | Aggregates word translation entropy metrics onto any DataFrame with a `SGid` column |
 
 ---
 
@@ -246,6 +249,73 @@ add `TB250`, `TG250`, and `TD250`.  Calling with `threshold=1000` raises a
 
 If you call the function a second time with the same threshold, the existing
 columns are silently replaced (the call is idempotent).
+
+---
+
+### 5 — Recompute word translation entropy (transformer)
+
+Word translation entropy quantifies how consistently a source token is
+rendered across participants: low entropy means everyone converged on (nearly)
+the same translation, high entropy means renderings vary widely. Three
+functions work together to compute and propagate these metrics.
+
+`ST_entropy_df` computes the entropy values from **ST** (source-token)
+table and returns a new ST DataFrame with the metrics added. `SG_entropy_df`
+and `DF_entropy_df` then aggregate those per-token values up to the **SG**
+(segment) table or to any other DataFrame that references source tokens via a
+`SGid` column, so `ST_entropy_df` must always be run first.
+
+```python
+from tprdb_utilities import read_TPRDB_tables, ST_entropy_df, SG_entropy_df, DF_entropy_df
+
+path = "/path/to/local/data/tprdb-mothership-clone"
+
+st = read_TPRDB_tables(["RUC17"], "st", path)
+sg = read_TPRDB_tables(["RUC17"], "sg", path)
+
+# 1. Compute entropy per source token (must run first)
+st = ST_entropy_df(st)
+
+# 2a. Aggregate the entropy metrics to the segment level
+sg = SG_entropy_df(sg, st)
+
+# 2b. Or aggregate them onto any DataFrame with a 'SGid' column that
+#     references one or more STid values (e.g. a word-alignment table)
+# df = DF_entropy_df(df, st)
+```
+
+`ST_entropy_df` groups sessions by source text (parsed from the session name)
+and requires every session of the same text to share identical source tokens;
+texts that don't match are skipped and reported as an error. It appends the
+following columns to the returned ST DataFrame:
+
+| Column | Description |
+|---|---|
+| `Count` | Number of occurrences counted for this source token |
+| `AltT`, `ProbT`, `InfT` | Number of alternatives, probability, and information content of the target-group rendering |
+| `HTra`, `HTraN` | Target-group entropy (raw and normalized) |
+| `AltS`, `ProbS`, `InfS` | Alternatives, probability, and information content of the source-group grouping |
+| `HSgrp`, `HSgrpN` | Source-group entropy (raw and normalized) |
+| `AltC`, `ProbC`, `InfC` | Alternatives, probability, and information content of the cross-alignment grouping |
+| `HCross`, `HCrossN` | Cross entropy (raw and normalized) |
+| `AltSTC`, `ProbSTC`, `InfSTC` | Alternatives, probability, and information content of the joint source/target/cross grouping |
+| `HSTC`, `HSTCN` | Joint source/target/cross entropy (raw and normalized) |
+
+`SG_entropy_df` and `DF_entropy_df` both expect a DataFrame paired with an ST
+table that has already been processed by `ST_entropy_df`, and append four
+aggregated columns:
+
+| Column | Description |
+|---|---|
+| `HTot` | Sum of `HTra` across the source tokens in the segment/unit |
+| `HTraN` | Mean of `HTraN` across the source tokens in the segment/unit |
+| `InfS` | Mean of `InfS` across the source tokens in the segment/unit |
+| `InfT` | Mean of `InfT` across the source tokens in the segment/unit |
+
+`SG_entropy_df` matches tokens to segments by splitting each `STseg` value on
+`+` (to handle merged segments). `DF_entropy_df` instead splits `SGid` on `+`
+and looks up the corresponding `STid` values in the ST table, skipping rows
+whose `SGid` is `'---'` or `'0'`.
 
 ---
 

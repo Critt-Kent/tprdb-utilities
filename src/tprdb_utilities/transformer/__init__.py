@@ -9,10 +9,22 @@ prep_parallel_texts
 recompute_pause_based_metrics
     Recompute typing-burst metrics (TB, TG, TD) for a custom pause threshold
     and append them to an SG DataFrame.
+ST_entropy_df
+    Compute word translation entropy for a Source Token DataFrame (ST tables).
+SG_entropy_df
+    Compute word translation entropy for a Segment DataFrame (SG tables).
+DF_entropy_df
+    Compute word translation entropy for a given DataFrame.
 """
 
 from .parallel_texts import prep_parallel_texts
 from .pause_metrics import recompute_pause_based_metrics
 from .word_translation_entropy import ST_entropy_df, SG_entropy_df,DF_entropy_df
 
-__all__ = ["prep_parallel_texts", "recompute_pause_based_metrics","word_translation_entropy"]
+__all__ = [
+    "prep_parallel_texts",
+    "recompute_pause_based_metrics",
+    "ST_entropy_df",
+    "SG_entropy_df",
+    "DF_entropy_df",
+]
